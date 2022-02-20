@@ -47,7 +47,7 @@ def _bulk_insert_products(skus, chunk):
 
 @shared_task
 def ingest_products_data(csv_filename, file_sha256):
-    csv_filepath = os.path.join(settings.MEDIA_ROOT, csv_filename)
+    csv_filepath = os.path.join(settings.MEDIA_STORAGE_ROOT, csv_filename)
 
     # check file already processed using SHA256 or not.
     is_file_history_exists = ProcessedFileHistory.objects.filter(
