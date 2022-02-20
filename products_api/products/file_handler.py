@@ -55,6 +55,8 @@ class UploadProgressCachedHandler(FileUploadHandler):
         fs = FileSystemStorage()
         filename = fs.save(self.file.name, self.file)
         self.file.close()
+        print(f"Saved file: {filename}")
+        print(f"Saved File URL: {fs.url(filename)}")
 
         # After File relocation, start the data ingestion process
         ingest_products_data.delay(filename, self.h_sha256.hexdigest())

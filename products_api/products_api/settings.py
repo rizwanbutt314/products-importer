@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-xc5p8#g7ttx+#84^')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', True)
+DEBUG = os.environ.get('DEBUG', False)
 
 ALLOWED_HOSTS = ['*']
 
@@ -150,7 +150,6 @@ FILE_UPLOAD_HANDLERS = ['products.file_handler.UploadProgressCachedHandler', ] +
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-MEDIA_STORAGE_ROOT = os.path.join(PROJECT_ROOT, 'media')
 
 CELERY_BROKER_URL = os.environ.get('REDIS_BROKER_URL', 'redis://127.0.0.1:6379/0')
 CELERY_RESULT_BACKEND = os.environ.get('REDIS_RESULT_BACKEND', 'redis://127.0.0.1:6379/0')
