@@ -1,6 +1,7 @@
 # Files
 *.csv
 .DS_Store
+*.pyc
 
 
 # Folders
