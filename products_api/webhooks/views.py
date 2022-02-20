@@ -4,9 +4,7 @@ from products.models import WebHook
 from .serializers import WebHooksSerializer
 
 
-class APIIndex(mixins.ListModelMixin,
-               mixins.CreateModelMixin,
-               mixins.DestroyModelMixin,
+class APIIndex(mixins.CreateModelMixin,
                generics.GenericAPIView):
     serializer_class = WebHooksSerializer
     
