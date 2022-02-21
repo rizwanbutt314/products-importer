@@ -49,17 +49,10 @@ class UploadProgressCachedHandler(FileUploadHandler):
         return raw_data
 
     def file_complete(self, file_size):
-        # Move File from temp location to Media Storage
         self.file.seek(0)
         self.file.size = file_size
-        fs = FileSystemStorage()
-        filename = fs.save(self.file.name, self.file)
-        self.file.close()
-        print(f"Saved file: {filename}")
-        print(f"Saved File URL: {fs.url(filename)}")
-
-        # After File relocation, start the data ingestion process
-        ingest_products_data.delay(filename, self.h_sha256.hexdigest())
+        # start the data ingestion process
+        ingest_products_data.delay(self.file.temporary_file_path(), self.h_sha256.hexdigest())
 
         return None
 

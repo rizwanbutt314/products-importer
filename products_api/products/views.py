@@ -5,6 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.http import JsonResponse, StreamingHttpResponse
 
 from products.models import Product
+from products.models import ProcessedFileHistory
 from .serializers import ProductsSerializer
 
 
@@ -27,11 +28,13 @@ class APIIndex(mixins.ListModelMixin,
         return self.create(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
-        qs = self.get_queryset()
-        if qs.exists():
-            qs.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return JsonResponse({"error": "no product found"}, status=status.HTTP_404_NOT_FOUND)
+        # delete products data
+        self.get_queryset().delete()
+
+        # delete processed file history as well
+        ProcessedFileHistory.objects.all().delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class APIDetail(mixins.RetrieveModelMixin,

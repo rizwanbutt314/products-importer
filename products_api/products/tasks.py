@@ -17,9 +17,6 @@ def to_product_object(data): return Product(
 
 
 def _update_product(product, data):
-    if product.sku != data["sku"]:
-        raise Exception("Sorting order didn't work")
-
     product.name = data["name"]
     product.description = data["description"]
     product.updated_at = timezone.now()
@@ -29,11 +26,12 @@ def _update_product(product, data):
 
 def _bulk_update_products(skus, chunk):
     chunk_to_update = chunk.loc[chunk["sku"].isin(skus)].copy()
-    chunk_to_update.sort_values(by=["sku"], inplace=True)
-    chunk_to_update = chunk_to_update.to_dict("records")
-    products_to_update = Product.objects.filter(sku__in=skus).order_by("sku")
-    objects_to_update = list(
-        map(_update_product, products_to_update, chunk_to_update))
+    products_to_update = Product.objects.filter(sku__in=skus)
+    objects_to_update = list()
+    for product in products_to_update.iterator():
+        data = chunk_to_update.loc[chunk["sku"] == product.sku].iloc[0]
+        objects_to_update.append(_update_product(product, data))
+        
     Product.objects.bulk_update(
         objects_to_update, ["name", "description", "updated_at"])
 
@@ -42,12 +40,11 @@ def _bulk_insert_products(skus, chunk):
     chunk_to_insert = chunk.loc[chunk["sku"].isin(skus)]
     chunk_to_insert = chunk_to_insert.to_dict("records")
     objects_to_insert = list(map(to_product_object, chunk_to_insert))
-    Product.objects.bulk_create(objects_to_insert)
+    Product.objects.bulk_create(objects_to_insert, ignore_conflicts=True)
 
 
 @shared_task
-def ingest_products_data(csv_filename, file_sha256):
-    csv_filepath = os.path.join(settings.MEDIA_ROOT, csv_filename)
+def ingest_products_data(file_url, file_sha256):
 
     # check file already processed using SHA256 or not.
     is_file_history_exists = ProcessedFileHistory.objects.filter(
@@ -56,7 +53,7 @@ def ingest_products_data(csv_filename, file_sha256):
     if not is_file_history_exists:
         # New Imported file, process the insertion/updation
         # process 1000s records at once
-        for chunk in pd.read_csv(csv_filepath, chunksize=1000):
+        for chunk in pd.read_csv(file_url, chunksize=1000):
             skus = set(chunk["sku"].to_list())
             # check the existing skus of file from database table
             existing_skus = Product.objects.filter(
@@ -78,7 +75,7 @@ def ingest_products_data(csv_filename, file_sha256):
         ProcessedFileHistory.objects.create(sha256=file_sha256)
 
     # Remove the file from media storage after processing
-    os.remove(csv_filepath)
+    os.remove(file_url)
 
 
 def _send_webhook_request(url, params):
