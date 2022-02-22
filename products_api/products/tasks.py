@@ -1,8 +1,9 @@
 import os
 import requests
 import pandas as pd
-from django.conf import settings
+
 from django.utils import timezone
+from django.db import transaction
 from celery import shared_task
 
 from products.models import Product, ProcessedFileHistory
@@ -31,7 +32,7 @@ def _bulk_update_products(skus, chunk):
     for product in products_to_update.iterator():
         data = chunk_to_update.loc[chunk["sku"] == product.sku].iloc[0]
         objects_to_update.append(_update_product(product, data))
-        
+
     Product.objects.bulk_update(
         objects_to_update, ["name", "description", "updated_at"])
 
@@ -76,6 +77,28 @@ def ingest_products_data(file_url, file_sha256):
 
     # Remove the file from media storage after processing
     os.remove(file_url)
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=20, retry_kwargs={'max_retries': 2})
+@transaction.atomic
+def ingest_products_data_v2(self, data):
+    df = pd.DataFrame(data)
+    skus = set(df["sku"].to_list())
+    # check the existing skus of file from database table
+    existing_skus = Product.objects.filter(
+        sku__in=skus).values_list('sku', flat=True)
+    existing_skus = set(existing_skus)
+
+    # Get the skus which are not present in database table
+    non_existing_skus = skus - existing_skus
+
+    # Bulk Update
+    if existing_skus:
+        _bulk_update_products(existing_skus, df)
+
+    # Bulk insert
+    if non_existing_skus:
+        _bulk_insert_products(non_existing_skus, df)
 
 
 def _send_webhook_request(url, params):

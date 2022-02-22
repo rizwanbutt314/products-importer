@@ -27,7 +27,7 @@ class Product(models.Model):
     class Meta:
         ordering = ['-id']
 
-
+# TODO: Deprecate History Model because now chunks of the file will be processed as background tasks
 class ProcessedFileHistory(models.Model):
     """ Processed File History model """
 

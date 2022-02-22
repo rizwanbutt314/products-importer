@@ -1,11 +1,11 @@
 import hashlib
+import pandas as pds
 
 from django.core.files.uploadhandler import FileUploadHandler
 from django.core.cache import cache
 from django.core.files.uploadedfile import TemporaryUploadedFile
-from django.core.files.storage import FileSystemStorage
 
-from .tasks import ingest_products_data
+from .tasks import ingest_products_data_v2
 
 
 class UploadProgressCachedHandler(FileUploadHandler):
@@ -51,8 +51,11 @@ class UploadProgressCachedHandler(FileUploadHandler):
     def file_complete(self, file_size):
         self.file.seek(0)
         self.file.size = file_size
-        # start the data ingestion process
-        ingest_products_data.delay(self.file.temporary_file_path(), self.h_sha256.hexdigest())
+
+        for chunk in pds.read_csv(self.file, chunksize=10000):
+            ingest_products_data_v2.delay(chunk.to_dict("records"))
+
+        self.file.close()
 
         return None
 
